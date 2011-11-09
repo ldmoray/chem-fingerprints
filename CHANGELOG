@@ -1,3 +1,15 @@
+What's new in 1.1a1
+==================
+
+33% performance increase for fingerprints which are a multiple of 32
+bits in length.
+
+Support for RDKit's Morgan fingerprints.
+
+Fixed a memory overflow bug which caused crashes on some Windows and
+Linux machines.
+
+
 What's new in 1.0
 ==================
 

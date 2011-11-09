@@ -19,7 +19,8 @@ fingerprint format. I hope some day to include some features he needs,
 like sparse and count fingerprints. RDKit's MACCS definitions are
 (excepting minor portability tweaks) the definitions used for the
 RDMACCS patterns. Greg's definitions are also used in CDK and
-OpenBabel.
+OpenBabel. Greg also contributed additional support for RDKit
+fingerprints.
 
 OpenEye, for a non-commercial license to their tools.
 
@@ -39,7 +40,15 @@ FPS format in his fingerprint analysis tools.
 Dmitry Pavlov for insights in how Indigo works and improvements in the
 Indigo implementations.
 
+Roche, for helping fund part of the project, and especially to Jerome
+Hart, for his work on getting chemfp working for their needs and in
+helping track down a subtle memory bug.
+
+Kim Walisch, for suggestions and code for faster popcount
+implementations.
+
 To patches and feedback from Chris Morely, Jörg Kurt Wegner, Phil
 Evans, Björn Grüning, Andrew Henry and others.
+
 
 To you, for reading this list and using the code.
