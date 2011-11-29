@@ -1336,8 +1336,64 @@ select_fastest_method(PyObject *self, PyObject *args) {
   }
   return PyInt_FromLong(result);
 }
-  
 
+
+static PyObject *
+get_num_options(PyObject *self, PyObject *args) {
+  return PyInt_FromLong(chemfp_get_num_options());
+}
+
+static PyObject *
+get_option_name(PyObject *self, PyObject *args) {
+  int i;
+  const char *s;
+  if (!PyArg_ParseTuple(args, "i:get_option_name", &i)) {
+    return NULL;
+  }
+  s = chemfp_get_option_name(i);
+  if (s == NULL) {
+    PyErr_SetString(PyExc_IndexError, "option name index out of range");
+    return NULL;
+  }
+  return PyString_FromString(s);
+}
+
+static PyObject *
+get_option(PyObject *self, PyObject *args) {
+  const char *option;
+  int value;
+  if (!PyArg_ParseTuple(args, "s:get_option", &option)) {
+    return NULL;
+  }
+  value = chemfp_get_option(option);
+  if (value == CHEMFP_BAD_ARG) {
+    /* Nothing can currently return -1, so this is an error */
+    PyErr_SetString(PyExc_ValueError, "Unknown option name");
+  }
+  return PyInt_FromLong(value);
+}
+
+static PyObject *
+set_option(PyObject *self, PyObject *args) {
+  const char *option;
+  int value, result;
+  if (!PyArg_ParseTuple(args, "si:set_option", &option, &value)) {
+    return NULL;
+  }
+
+  /* Make sure it's a valid name */
+  if (chemfp_get_option(option) == CHEMFP_BAD_ARG) {
+    PyErr_SetString(PyExc_ValueError, "Unknown option name");
+    return NULL;
+  }
+
+  result = chemfp_set_option(option, value);
+  if (result != CHEMFP_OK) {
+    PyErr_SetString(PyExc_ValueError, "Bad option value");
+    return NULL;
+  }
+  return Py_BuildValue("");
+}
 
 
 static PyMethodDef chemfp_methods[] = {
@@ -1431,6 +1487,19 @@ static PyMethodDef chemfp_methods[] = {
 
   {"select_fastest_method", select_fastest_method, METH_VARARGS,
    "select_fastest_method (TODO: document)"},
+
+  {"get_num_options", get_num_options, METH_NOARGS,
+   "get_num_options (TODO: document)"},
+
+  {"get_option_name", get_option_name, METH_VARARGS,
+   "get option name (TODO: document)"},
+
+  {"get_option", get_option, METH_VARARGS,
+   "get option (TODO: document)"},
+
+  {"set_option", set_option, METH_VARARGS,
+   "set option (TODO: document)"},
+
 
   {NULL, NULL, 0, NULL}        /* Sentinel */
 

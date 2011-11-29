@@ -11,6 +11,37 @@
 static unsigned long 
 timeit(chemfp_popcount_f popcount, int size, int repeat);
 
+static int _chemfp_report_select_popcount = 0;
+static chemfp_method_type *_chemfp_popcount_method_p = NULL;
+
+static int _chemfp_report_select_intersect_popcount = 0;
+static chemfp_method_type *_chemfp_intersect_popcount_method_p = NULL;
+
+int _chemfp_get_option_report_popcount(void) {
+  return _chemfp_report_select_popcount;
+}
+int _chemfp_set_option_report_popcount(int value) {
+  if (value == 0 || value == 1) {
+    _chemfp_report_select_popcount = value;
+    _chemfp_popcount_method_p = NULL;
+    return CHEMFP_OK;
+  }
+  return CHEMFP_BAD_ARG;
+}
+
+int _chemfp_get_option_report_intersect_popcount(void) {
+  return _chemfp_report_select_intersect_popcount;  
+}
+int _chemfp_set_option_report_intersect_popcount(int value) {
+  if (value == 0 || value == 1) {
+    _chemfp_report_select_intersect_popcount = value;
+    _chemfp_intersect_popcount_method_p = NULL;
+    return CHEMFP_OK;
+  }
+  return CHEMFP_BAD_ARG;
+}
+
+
 /* These are the alignment categories which I support */
 
 chemfp_alignment_type _chemfp_alignments[] = {
@@ -273,44 +304,70 @@ chemfp_set_alignment_method(int alignment, int method) {
 /* (This may change in the future; memmap, perhaps?) */
 /* The Python payload is 4 byte aligned but not 8 byte aligned. */
 
-chemfp_popcount_f
-chemfp_select_popcount(int num_bits,
-                       int storage_len, const unsigned char *arena) {
+static int
+_chemfp_select_popcount(int num_bits,
+                        int storage_len, const unsigned char *arena) {
 
   int num_bytes = (num_bits+7)/8;
 
   if (num_bytes > storage_len) {
-    /* Give me bad input, I'll give you worse output */
-    return NULL;
+    /* That's just a bad idea */
+    return CHEMFP_ALIGN1;
   }
 
   set_default_alignment_methods();
 
   if (num_bytes <= 1) {
     /* Really? */
-    return _chemfp_alignments[CHEMFP_ALIGN1].method_p->popcount;
+    return CHEMFP_ALIGN1;
   }
   if (ALIGNMENT(arena, 8) == 0 &&
       storage_len % 8 == 0) {
     if (num_bytes >= 96) {
-      return _chemfp_alignments[CHEMFP_ALIGN8_LARGE].method_p->popcount;
+      return CHEMFP_ALIGN8_LARGE;
     } else {
-      return _chemfp_alignments[CHEMFP_ALIGN8_SMALL].method_p->popcount;
+      return CHEMFP_ALIGN8_SMALL;
     }
   }
 
   if (ALIGNMENT(arena, 4) &&
       storage_len % 4 == 0) {
-    return _chemfp_alignments[CHEMFP_ALIGN4].method_p->popcount;
+    return CHEMFP_ALIGN4;
   }
 
-  return _chemfp_alignments[CHEMFP_ALIGN1].method_p->popcount;
+  return CHEMFP_ALIGN1;
 }
 
+const char *
+_alignment_description(const unsigned char *arena) {
+  if (ALIGNMENT(arena, 16) == 0) { return "16"; }
+  if (ALIGNMENT(arena,  8) == 0) { return "8"; }
+  if (ALIGNMENT(arena,  4) == 0) { return "4"; }
+  return "1";
+}
 
+/* Wrapper function which can report the selected popcount method */
+chemfp_popcount_f
+chemfp_select_popcount(int num_bits,
+                       int storage_len, const unsigned char *arena) {
+  int alignment = _chemfp_select_popcount(num_bits, storage_len, arena);
+  chemfp_method_type *method_p = _chemfp_alignments[alignment].method_p;
 
-chemfp_intersect_popcount_f
-chemfp_select_intersect_popcount(int num_bits,
+  if (_chemfp_report_select_popcount && _chemfp_popcount_method_p != method_p) {
+    _chemfp_popcount_method_p = method_p;
+    fprintf(stderr,
+            "Popcount method: %s (%s) num_bits: %d "
+            "arena: %p (%s byte aligned) storage_len: %d\n",
+            method_p->name, _chemfp_alignments[alignment].name, num_bits,
+            arena, _alignment_description(arena), storage_len);
+  }
+  return method_p->popcount;
+}
+
+/**** Find the best intersection popcount function *****/
+
+static int
+_chemfp_select_intersect_popcount(int num_bits,
                                  int storage_len1, const unsigned char *arena1,
                                  int storage_len2, const unsigned char *arena2) {
 
@@ -318,14 +375,14 @@ chemfp_select_intersect_popcount(int num_bits,
   int num_bytes = (num_bits+7)/8;
 
   if (num_bytes > storage_len) {
-    /* Give me bad input, I'll give you worse output */
-    return NULL;
+    /* That's just a bad idea */
+    return CHEMFP_ALIGN1;
   }
 
   set_default_alignment_methods();
   
   if (num_bytes <= 1) {
-    return _chemfp_alignments[CHEMFP_ALIGN1].method_p->intersect_popcount;
+    return CHEMFP_ALIGN1;
   }
 
   /* Check for 8 byte alignment */
@@ -343,14 +400,14 @@ chemfp_select_intersect_popcount(int num_bits,
           ALIGNMENT(arena2, 64) == 0 &&
           storage_len1 % 64 == 0 &&
           storage_len2 % 64 == 0) {
-        return _chemfp_alignments[CHEMFP_ALIGN_SSSE3].method_p->intersect_popcount;
+        return CHEMFP_ALIGN_SSSE3;
       }
     }
 
     if (num_bytes >= 96) {
-      return _chemfp_alignments[CHEMFP_ALIGN8_LARGE].method_p->intersect_popcount;
+      return CHEMFP_ALIGN8_LARGE;
     } else {
-      return _chemfp_alignments[CHEMFP_ALIGN8_SMALL].method_p->intersect_popcount;
+      return CHEMFP_ALIGN8_SMALL;
     }
   }
 
@@ -360,12 +417,37 @@ chemfp_select_intersect_popcount(int num_bits,
       ALIGNMENT(arena2, 4) == 0 &&
       storage_len1 % 4 == 0 &&
       storage_len2 % 4 == 0) {
-    return _chemfp_alignments[CHEMFP_ALIGN4].method_p->intersect_popcount;
+    return CHEMFP_ALIGN4;
   }
 
   /* At least we're one byte aligned */
-  return _chemfp_alignments[CHEMFP_ALIGN1].method_p->intersect_popcount;
+  return CHEMFP_ALIGN1;
 }
+
+/* Wrapper function which can report the selected intersect popcount method */
+chemfp_intersect_popcount_f
+chemfp_select_intersect_popcount(int num_bits,
+                                 int storage_len1, const unsigned char *arena1,
+                                 int storage_len2, const unsigned char *arena2) {
+  int alignment = _chemfp_select_intersect_popcount(num_bits, storage_len1, arena1,
+                                                    storage_len2, arena2);
+
+  chemfp_method_type *method_p = _chemfp_alignments[alignment].method_p;
+
+  if (_chemfp_report_select_intersect_popcount &&
+      _chemfp_intersect_popcount_method_p != method_p) {
+    _chemfp_intersect_popcount_method_p = method_p;
+    fprintf(stderr,
+            "Intersect popcount method: %s (%s) num_bits: %d "
+            "arena1: %p (%s byte aligned) storage_len1: %d "
+            "arena2: %p (%s byte aligned) storage_len2: %d\n",
+            method_p->name, _chemfp_alignments[alignment].name, num_bits,
+            arena1, _alignment_description(arena1), storage_len1,
+            arena2, _alignment_description(arena2), storage_len2);
+  }
+  return method_p->intersect_popcount;
+}
+  
 
 
 /*********** Automatically select the fastest method ***********/

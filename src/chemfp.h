@@ -33,6 +33,12 @@ int chemfp_set_alignment_method(int alignment, int method);
 
 int chemfp_select_fastest_method(int alignment, int repeat);
 
+
+int chemfp_get_num_options(void);
+const char *chemfp_get_option_name(int index);
+int chemfp_get_option(const char *option);
+int chemfp_set_option(const char *option, int value);
+
 /* This gives compile-time version information. */
 /* Use "chemfp_version" for run-time version information */
 #define CHEMFP_MAJOR_VERSION 1

@@ -1,3 +1,5 @@
+import os
+import sys
 import _chemfp
 from _chemfp import (hex_isvalid, hex_popcount, hex_intersect_popcount,
                      hex_tanimoto, hex_contains)
@@ -53,3 +55,65 @@ def select_fastest_method(repeat=10000):
     
     for alignment_i, name in enumerate(get_alignments()):
         _chemfp.select_fastest_method(alignment_i, repeat)
+
+
+def get_options():
+    return [_chemfp.get_option_name(i) for i in range(_chemfp.get_num_options())]
+
+def get_option(option):
+    _chemfp.get_option(option)
+
+def set_option(option, value):
+    _chemfp.set_option(option, value)
+
+def print_config(out=sys.stdout):
+    print >>out, "Alignment methods:"
+    for alignment in get_alignments():
+        method = get_alignment_method(alignment)
+        print >>out, "  %s: %s" % (alignment, method)
+    print >>out, "Option settings:"
+    for option in get_options():
+        print >>out, "  %s: %s" % (option, _chemfp.get_option(option))
+
+def use_environment_variables(environ=None):
+    if environ is None:
+        environ = os.environ
+
+    known = set()
+    for alignment in get_alignments():
+        name = "CHEMFP-" + alignment.upper()
+        known.add(name)
+        try:
+            value = environ[name]
+        except KeyError:
+            pass
+        else:
+            try:
+                set_alignment_method(alignment, value)
+            except ValueError, err:
+                print >>sys.stderr, "WARNING: Unable to use $%s = %r: %s" % (
+                    (name, value, err))
+
+    for option in get_options():
+        name = "CHEMFP-" + option.upper()
+        known.add(name)
+        try:
+            value = environ[name]
+        except KeyError:
+            pass
+        else:
+            try:
+                set_option(option, int(value))
+            except ValueError, err:
+                print >>sys.stderr, "WARNING: Unable to use $%s = %r: %s" % (
+                    (name, value, err))
+
+    known.add("CHEMFP-PRINT-CONFIG")
+    if environ.get("CHEMFP-PRINT-CONFIG", "0") == "1":
+        print_config(sys.stderr)
+
+    for k in environ:
+        if not k.startswith("CHEMFP-"):
+            continue
+        if k not in known:
+            print >>sys.stderr, "WARNING: Unknown chemfp environment variable %r" % (k,)
