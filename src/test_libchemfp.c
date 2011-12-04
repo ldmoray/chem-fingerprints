@@ -5,8 +5,6 @@
 /* This is not a comprehensive test suite. That's done in Python code. */
 /* This tests that the libchemfp public API is usable from C code */
 
-#error This has not been compiled for a very long time
-
 #define CHECK(msg, expr, result)                                 \
   if ( (expr) != (result) ) {puts("FAIL: " msg); failed++;} \
   else {puts("PASS: " msg); passed++;}
@@ -30,7 +28,7 @@ int main() {
   CHECK("popcount 1", chemfp_hex_popcount(2, "01ff"), 1);
   CHECK("popcount bad", chemfp_hex_popcount(4, "01fg"), -1);
   CHECK("intersect popcount", chemfp_hex_intersect_popcount(6, "0F0123", "010b42"), 3);
-  CHECK("Tanimoto empty", chemfp_hex_tanimoto(2, "00", "00"), 1.0);
+  CHECK("Tanimoto empty", chemfp_hex_tanimoto(2, "00", "00"), 0.0);
   CHECK("Tanimoto", chemfp_hex_tanimoto(6, "123456", "012345"),
         (0.0+0+1+0+1+1)/(1+2+2+3+2+3));
   CHECK("Tanimoto fail", chemfp_hex_tanimoto(6, "12345 ", "012345"), -1.0);
@@ -43,20 +41,21 @@ int main() {
   CHECK("single byte popcount", chemfp_byte_popcount(1, "A"), 2);
   CHECK("multiple byte popcount", chemfp_byte_popcount(4, "ABCD"), 2+2+3+2);
   CHECK("intersect popcount", chemfp_byte_intersect_popcount(4, "ABCD", "BCDE"), 1+2+1+2);
-  CHECK("Tanimoto null", chemfp_byte_tanimoto(0, "", ""), 1.0);
-  CHECK("Tanimoto empty", chemfp_byte_tanimoto(1, "\0", "\0"), 1.0);
+  CHECK("Tanimoto null", chemfp_byte_tanimoto(0, "", ""), 0.0);
+  CHECK("Tanimoto empty", chemfp_byte_tanimoto(1, "\0", "\0"), 0.0);
   CHECK("Tanimoto", chemfp_byte_tanimoto(2, "AB", "BC"), (1.0+2) / (3+3));
   CHECK("contains", chemfp_byte_contains(2, " *", "**"), 1);
   CHECK("does not contain", chemfp_byte_contains(2, "**", " *"), 0);
   
   puts("== FPS line ==");
-  CHECK("valid with unknown hex len", chemfp_fps_line_validate(-1, 12, "abcdef spam\n"), 0);
-  CHECK("valid with known hex len", chemfp_fps_line_validate(6, 12, "abcdef spam\n"), 0);
+  CHECK("valid with unknown hex len", chemfp_fps_line_validate(-1, 12, "abcdef\tspam\n"), 0);
+  CHECK("valid with known hex len", chemfp_fps_line_validate(6, 12, "abcdef\tspam\n"), 0);
   CHECK("valid with bad hex len", chemfp_fps_line_validate(4, 12, "abcdef spam\n"),
         CHEMFP_UNEXPECTED_FINGERPRINT_LENGTH);
   CHECK("valid with bad hex", chemfp_fps_line_validate(6, 12, "abcdeg spam\n"),
         CHEMFP_BAD_FINGERPRINT);
 
+#if 0
   puts("== N-largest ==");
   int indices[2] = {0,0};
   double scores[2] = {0.0, 0.0};
@@ -80,6 +79,7 @@ int main() {
   unsigned char *start_ids[2];
   int id_lens[2];
   int lineno;
+
   if (chemfp_hex_tanimoto_block(2,
                                 4, "4131",
                                 157,
@@ -116,6 +116,7 @@ int main() {
   CHECK("chemfp_byte_intersect_popcount_count",
                 chemfp_byte_intersect_popcount_count(4, "ABCD", 2, "XBCDEXA   X", 1, 5, 3),
                 1);
+#endif
 
   printf("Pass: %d   Fail: %d\n", passed, failed);
 }
