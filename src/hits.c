@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "chemfp.h"
 #include "chemfp_internal.h"
@@ -11,18 +12,10 @@ chemfp_threshold_result *chemfp_alloc_threshold_results(int size) {
 }
 
 void chemfp_free_results(int num_results, chemfp_threshold_result *results) {
-  int i, j, num_hits;
-  chemfp_hit_block *p, *q;
+  int i;
   for (i=0; i<num_results; i++) {
-    num_hits = results[i].num_hits;
-    if (num_hits > 1) {
-      p = results[i].first;
-      for (j=1+CHEMFP_HIT_BLOCK_SIZE; j<num_hits; j+=CHEMFP_HIT_BLOCK_SIZE) {
-        q = p->next;
-        free(p);
-        p = q;
-      }
-      free(p);
+    if (results[i].num_hits) {
+      free(results[i].scores);
     }
   }
   free(results);
@@ -35,38 +28,41 @@ int chemfp_get_num_hits(chemfp_threshold_result *result) {
 int _chemfp_add_hit(chemfp_threshold_result *result,
                     int target_index, double score) {
   int num_hits = result->num_hits;
-  int i;
-  chemfp_hit_block *block;
-  if (num_hits == 0) {
-    result->index0 = target_index;
-    result->score0 = score;
-    result->num_hits = 1;
-    return 1;
-  }
-  
-  i = (num_hits-1) % CHEMFP_HIT_BLOCK_SIZE;
-  if (i == 0) {
-    /* Need to allocate another block */
-    block = (chemfp_hit_block *) malloc(sizeof(chemfp_hit_block));
-    if (!block) {
-      return 0;
-    }
-    if (num_hits == 1) {
-      /* Add the first block; need to initialize start */
-      result->first = block;
+  int num_allocated = result->num_allocated;
+  int *indices, *old_indices;
+  double *scores;
+  if (num_hits == num_allocated) {
+    if (num_hits == 0) {
+      num_allocated = 6;
+      scores = (double *) malloc(num_allocated * (sizeof(int)+sizeof(double)));
+      if (!scores) {
+	return 0;
+      }
+      indices = (int *) (scores + num_allocated);
+      result->num_allocated = num_allocated;
+      result->indices = indices;
+      result->scores = scores;
     } else {
-      /* Otherwise, append to the end of the current end */
-      result->last->next = block;
+      /* Grow by about 12% each time; this is the Python listobject resize strategy */
+      num_allocated += (num_allocated >> 3) + (num_allocated < 9 ? 3 : 6);
+      scores = (double *) realloc(result->scores, num_allocated * (sizeof(int)+sizeof(double)));
+      if (!scores) {
+	return 0;
+      }
+      /* Shift the indices to its new location */
+      old_indices = (int *) (scores + num_hits);
+      indices = (int *) (scores + num_allocated);
+      memmove(indices, old_indices, num_hits*sizeof(int));
+      result->num_allocated = num_allocated;
+      result->indices = indices;
+      result->scores = scores;
     }
-    /* Link "end" to the new end block */
-    result->last = block;
-
   } else {
-    /* Don't need to allocate new space */
-    block = result->last;
+    indices = result->indices;
+    scores = result->scores;
   }
-  block->target_indices[i] = target_index;
-  block->scores[i] = score;
+  indices[num_hits] = target_index;
+  scores[num_hits] = score;
   result->num_hits = num_hits+1;
   return 1;
 }
@@ -74,24 +70,14 @@ int _chemfp_add_hit(chemfp_threshold_result *result,
 int chemfp_threshold_result_get_hits(chemfp_threshold_result *result,
                                      chemfp_assign_hits_p add_callback, void *payload) {
   int num_hits = result->num_hits;
-  int i, j, errval, index;
-  chemfp_hit_block *block;
+  int i, errval;
 
   if (num_hits) {
-    add_callback(payload, 0, result->index0, result->score0);
-    block = result->first;
-    for (i=1; i<num_hits; i+=CHEMFP_HIT_BLOCK_SIZE) {
-      for (j=0; j<CHEMFP_HIT_BLOCK_SIZE; j++) {
-        index = i+j;
-        if (index >= num_hits) {
-          break;
-        }
-        errval = add_callback(payload, index, block->target_indices[j], block->scores[j]);
-        if (errval) {
-          return errval;
-        }
+    for (i=0; i<num_hits; i++) {
+      errval = add_callback(payload, i, result->indices[i], result->scores[i]);
+      if (errval) {
+	return errval;
       }
-      block = block->next;
     }
   }
   return 0;

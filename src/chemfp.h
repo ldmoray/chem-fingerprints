@@ -81,10 +81,9 @@ typedef struct chemfp_hit_block {
 
 typedef struct chemfp_threshold_result {
   int num_hits;
-  int index0;
-  double score0;
-  chemfp_hit_block *first;
-  chemfp_hit_block *last;
+  int num_allocated;
+  int *indices;
+  double *scores;
 } chemfp_threshold_result;
 
 chemfp_threshold_result *chemfp_alloc_threshold_results(int num_results);
