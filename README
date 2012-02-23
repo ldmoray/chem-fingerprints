@@ -12,7 +12,8 @@ Install in the normal Python way:
 
   python setup.py install
 
-(You may need a 'sudo' or be root, depending on your system.)
+You may need a 'sudo' or be root, depending on your system. To
+disable OpenMP support, append "--with-openmp".
 
 Note: chemfp requires a C compiler to build the _chemfp extension. 
 
