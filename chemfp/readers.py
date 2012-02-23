@@ -10,7 +10,7 @@ import heapq
 import itertools
 import ctypes
 
-from . import load_fingerprints, Metadata, ParseError
+from . import load_fingerprints, Metadata, ParseError, FingerprintReader
 from . import fps_search
 from . import io
 
@@ -65,7 +65,7 @@ def _read_blocks(infile):
 
             
 
-class FPSReader(object):
+class FPSReader(FingerprintReader):
     _search = fps_search
     def __init__(self, infile, metadata, first_fp_lineno, first_fp_block):
         self._infile = infile
@@ -103,21 +103,6 @@ class FPSReader(object):
         for block in block_stream:
             yield block
 
-    def iter_arenas(self, arena_size = 1000):
-        id_fps = iter(self)
-        if arena_size is None:
-            yield load_fingerprints(id_fps,
-                                    metadata = self.metadata,
-                                    reorder = False)
-            return
-        while 1:
-            arena = load_fingerprints(itertools.islice(id_fps, 0, arena_size),
-                                      metadata = self.metadata,
-                                      reorder = False)
-            if not arena:
-                break
-            yield arena
-        
     def iter_rows(self):
         unhexlify = binascii.unhexlify
         lineno = self._first_fp_lineno

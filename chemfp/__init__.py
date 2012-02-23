@@ -24,7 +24,7 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-__version__ = "1.1b3"
+__version__ = "1.1b4"
 __version_info = (1, 1, 0)
 SOFTWARE = "chemfp/" + __version__
 
@@ -642,6 +642,12 @@ class FingerprintReader(object):
             if not arena:
                 break
             yield arena
+
+    def save(self, destination):
+        from . import io
+        io.write_fps1_output(self, destination, self.metadata)
+        from . import io
+
 
 class FingerprintIterator(FingerprintReader):
     """A FingerprintReader for an iterator of (id, fingerprint) pairs
