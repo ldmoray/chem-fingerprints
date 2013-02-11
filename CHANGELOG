@@ -1,5 +1,5 @@
-What's new in 1.1p1 (in development)
-================================
+What's new in 1.1p1 (11 Feb 2013)
+=================================
 
 Fixed memory leaks caused by using Py_BuildValue with an "O" instead
 of an "N". This caused the reference count on the return arena strings

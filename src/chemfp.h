@@ -54,7 +54,7 @@ int chemfp_set_option(const char *option, int value);
   intermediate builds before a full release use the 'b' suffix, like
   '1.1b7' before the '1.1' final release.
 */
-#define CHEMFP_VERSION_STRING "1.1"
+#define CHEMFP_VERSION_STRING "1.1p1"
 
 /* Return the CHEMFP_VERSION.  */
 const char *chemfp_version(void);
